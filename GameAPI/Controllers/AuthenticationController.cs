@@ -15,6 +15,8 @@ namespace GameAPI.Controllers
     public class AuthenticationController(IConfiguration configuration) : ControllerBase
     {
 
+        //Token changed
+
         public static User user = new();
 
         [HttpPost("register")]
