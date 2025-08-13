@@ -1,4 +1,5 @@
 using GameAPI.Data;
+using GameAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -12,6 +13,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<GameUserDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("UserDb")));
+
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 
