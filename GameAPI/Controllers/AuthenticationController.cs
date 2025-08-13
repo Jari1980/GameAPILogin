@@ -1,5 +1,6 @@
 ﻿using GameAPI.Entities;
 using GameAPI.Models;
+using GameAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -7,69 +8,41 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace GameAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthenticationController(IConfiguration configuration) : ControllerBase
+    public class AuthenticationController(IAuthService authservice) : ControllerBase
     {
-
-        //Token changed
 
         public static User user = new();
 
         [HttpPost("register")]
-        public ActionResult<User> Register(UserDTO request)
+        public async Task<ActionResult<User>> Register(UserDTO request)
         {
-            var hashedPassword = new PasswordHasher<User>()
-                .HashPassword(user, request.Password);
-
-            user.UserName = request.UserName;
-            user.PasswordHash = hashedPassword;
+            var user = await authservice.RegisterAsync(request);
+            if (user == null)
+            {
+                return BadRequest("Username already taken.");
+            }
 
             return Ok(user);
         }
 
 
         [HttpPost("login")]
-        public ActionResult<string> Login(UserDTO request)
+        public async Task<ActionResult<string>> Login(UserDTO request)
         {
-            if (user.UserName != request.UserName)
+            var token = await authservice.LoginAsync(request);
+            if (token == null)
             {
-                return BadRequest("User not found");
+                return BadRequest("Invalid username or password.");
             }
-            if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password)
-                == PasswordVerificationResult.Failed)
-            {
-                return BadRequest("Wrong password");
-            }
-
-            string token = CreateToken(user);
 
             return Ok(token);
         }
 
-        private string CreateToken(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.UserName)
-            };
-
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var tokenDescriptor = new JwtSecurityToken(
-                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
-                audience: configuration.GetValue<string>("AppSettings:Audience"),
-                claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
-                signingCredentials: creds
-            );
-            return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
-        }
     }
 }
